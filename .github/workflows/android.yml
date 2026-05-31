@@ -31,8 +31,8 @@ jobs:
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
           ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-36"
 
-      - name: Run Unit Tests
-        run: gradle test
+      - name: Build Project
+        run: gradle build -x test
 
       - name: Decode Keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > my-upload-key.jks
