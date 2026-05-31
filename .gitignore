@@ -1,6 +1,6 @@
+# Android
 *.iml
 .gradle
-.kotlin
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -8,11 +8,30 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
 .externalNativeBuild
 .cxx
-local.properties
+/build
+/captures
+
+# App specific
+/app/build
+/app/src/main/assets/aistudio
+
+# Keystores & Secrets
+*.jks
+*.keystore
+*.txt
 .env
-debug.keystore
+local.properties
+
+# Kotlin
+.kotlin
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Project Workspace
+promptbase.zip
+.agents/
+skills-lock.json
