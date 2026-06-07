@@ -209,12 +209,11 @@ class PromptViewModelTest {
 
         viewModel.prompts.test {
             viewModel.setSearchQuery("query")
+            skipItems(1)
             val emitted = awaitItem()
-            if (emitted.isNotEmpty()) {
-                assertEquals(1, emitted.size)
-                assertEquals("Found", emitted[0].prompt.title)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(1, emitted.size)
+            assertEquals("Found", emitted[0].prompt.title)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -228,12 +227,11 @@ class PromptViewModelTest {
 
         viewModel.prompts.test {
             viewModel.selectTag(codingTag)
+            skipItems(1)
             val emitted = awaitItem()
-            if (emitted.isNotEmpty()) {
-                assertEquals(1, emitted.size)
-                assertEquals("Code", emitted[0].prompt.title)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(1, emitted.size)
+            assertEquals("Code", emitted[0].prompt.title)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -246,11 +244,10 @@ class PromptViewModelTest {
 
         viewModel.prompts.test {
             viewModel.selectUntagged()
+            skipItems(1)
             val emitted = awaitItem()
-            if (emitted.isNotEmpty()) {
-                assertEquals(1, emitted.size)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(1, emitted.size)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 }
