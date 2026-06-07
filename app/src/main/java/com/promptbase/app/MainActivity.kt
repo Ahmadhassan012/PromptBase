@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.*
@@ -22,11 +23,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.promptbase.app.data.model.PromptWithTags
+import com.promptbase.app.data.model.Tag
 import com.promptbase.app.ui.*
 import com.promptbase.app.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.launch
@@ -53,6 +57,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private data class BottomNavItem(
+    val label: String,
+    val icon: ImageVector,
+    val route: String
+)
+
+private val bottomNavItems = listOf(
+    BottomNavItem("Home", Icons.Filled.Home, "home"),
+    BottomNavItem("Categories", Icons.Filled.GridView, "categories"),
+    BottomNavItem("Profile", Icons.Filled.Person, "profile"),
+)
+
+private val bottomBarRoutes = bottomNavItems.map { it.route }.toSet()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PromptBaseApp(viewModel: PromptViewModel) {
@@ -64,6 +82,7 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
     val coroutineScope = rememberCoroutineScope()
 
     val prompts by viewModel.prompts.collectAsStateWithLifecycle()
+    val allPromptsUnfiltered by viewModel.allPromptsUnfiltered.collectAsStateWithLifecycle()
     val tags by viewModel.allTags.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedTag by viewModel.selectedTag.collectAsStateWithLifecycle()
@@ -76,9 +95,40 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
     var copyAlertMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val showBottomBar = currentRoute in bottomBarRoutes
+
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("main_layout"),
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            if (showBottomBar) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 3.dp
+                ) {
+                    bottomNavItems.forEach { item ->
+                        val selected = currentRoute == item.route ||
+                            (item.route == "home" && currentRoute == null)
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                if (currentRoute != item.route) {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) }
+                        )
+                    }
+                }
+            }
+        },
         floatingActionButton = {
             if (currentRoute == "home") {
                 ExtendedFloatingActionButton(
@@ -127,7 +177,54 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
                         onQueryChange = { viewModel.setSearchQuery(it) },
                         onSelectTag = { tag -> viewModel.selectTag(tag) },
                         onSelectUntagged = { viewModel.selectUntagged() },
-                        onProfileClick = { navController.navigate("profile") },
+                        onFillClick = { prompt -> fillPromptTarget = prompt },
+                        onEditClick = { prompt ->
+                            viewModel.startEditing(prompt)
+                            navController.navigate("editor/${prompt.prompt.id}")
+                        },
+                        onArchiveClick = { prompt ->
+                            viewModel.softDeletePrompt(prompt.prompt.id)
+                            coroutineScope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Moved to trash",
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    viewModel.restorePrompt(prompt.prompt.id)
+                                }
+                            }
+                        }
+                    )
+                }
+
+                composable("categories") {
+                    CategoriesScreen(
+                        tags = tags,
+                        onCategoryClick = { tag ->
+                            navController.navigate("category/${tag.tagId}")
+                        },
+                        onCreateCategory = { name ->
+                            viewModel.addTagDirectly(name)
+                        }
+                    )
+                }
+
+                composable(
+                    route = "category/{tagId}",
+                    arguments = listOf(navArgument("tagId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val tagId = backStackEntry.arguments?.getString("tagId") ?: return@composable
+                    val categoryTag = tags.find { it.tagId == tagId }
+                    val categoryPrompts = remember(tagId, allPromptsUnfiltered) {
+                        allPromptsUnfiltered.filter { pwt ->
+                            pwt.tags.any { it.tagId == tagId }
+                        }
+                    }
+                    CategoryDetailScreen(
+                        tag = categoryTag,
+                        prompts = categoryPrompts,
+                        onBack = { navController.popBackStack() },
                         onFillClick = { prompt -> fillPromptTarget = prompt },
                         onEditClick = { prompt ->
                             viewModel.startEditing(prompt)
@@ -179,7 +276,7 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
 
                 composable("profile") {
                     ProfileScreen(
-                        prompts = prompts,
+                        prompts = allPromptsUnfiltered,
                         trashedCount = trashedPrompts.size,
                         onImportPrompts = { imported ->
                             viewModel.importPrompts(imported)

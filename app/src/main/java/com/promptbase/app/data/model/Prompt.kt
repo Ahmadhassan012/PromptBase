@@ -25,7 +25,11 @@ data class Prompt(
 @Entity(tableName = "tags")
 data class Tag(
     @PrimaryKey val tagId: String = UUID.randomUUID().toString(),
-    val name: String
+    val name: String,
+    val icon: String = "Label",
+    val colorHex: String = "#6750A4",
+    val displayOrder: Int = 0,
+    val isPredefined: Boolean = false
 )
 
 @Entity(

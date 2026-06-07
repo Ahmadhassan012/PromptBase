@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.promptbase.app.data.model.PromptWithTags
 import com.promptbase.app.data.model.Tag
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     prompts: List<PromptWithTags>,
@@ -33,7 +35,6 @@ fun HomeScreen(
     onQueryChange: (String) -> Unit,
     onSelectTag: (Tag?) -> Unit,
     onSelectUntagged: () -> Unit,
-    onProfileClick: () -> Unit,
     onFillClick: (PromptWithTags) -> Unit,
     onEditClick: (PromptWithTags) -> Unit,
     onArchiveClick: (PromptWithTags) -> Unit,
@@ -43,72 +44,52 @@ fun HomeScreen(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        Column(
+        TopAppBar(
+            title = {
+                Text(
+                    text = "PromptBase",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                titleContentColor = MaterialTheme.colorScheme.primary
+            )
+        )
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onQueryChange,
+            placeholder = { Text("Search prompts...") },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Clear search")
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "PromptBase",
-                        style = MaterialTheme.typography.displayMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Your prompt library",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onProfileClick) {
-                    Icon(
-                        Icons.Rounded.AccountCircle,
-                        contentDescription = "Profile",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = onQueryChange,
-                placeholder = { Text("Search") },
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = "Search Icon") },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { onQueryChange("") }) {
-                            Icon(Icons.Rounded.Close, contentDescription = "Clear search")
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("search_prompt_input"),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface
-                ),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
-            )
-        }
+                .padding(horizontal = 20.dp)
+                .testTag("search_prompt_input"),
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedContainerColor = MaterialTheme.colorScheme.surface
+            ),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
+        )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 4.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -150,8 +131,6 @@ fun HomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         if (prompts.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -167,20 +146,21 @@ fun HomeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Inbox,
-                        contentDescription = "Empty icon",
+                        contentDescription = "Empty",
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                         modifier = Modifier.size(72.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = if (searchQuery.isNotEmpty()) "No matches found" else "No Prompt Templates Saved",
+                        text = if (searchQuery.isNotEmpty()) "No matches found" else "Your Prompt Library",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = if (searchQuery.isNotEmpty()) "Try refining your keywords or clear active tag filters." else "Click the '+' button below to save your very first dynamic template using {{variable}} placeholders.",
+                        text = if (searchQuery.isNotEmpty()) "Try refining your keywords or clearing filters."
+                        else "Tap + to create your first prompt template with {{variable}} placeholders.\nOr browse Categories for pre-built templates.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -192,7 +172,10 @@ fun HomeScreen(
                                 onQueryChange("")
                                 onSelectTag(null)
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         ) {
                             Text("Reset Filters")
                         }

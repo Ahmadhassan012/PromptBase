@@ -55,6 +55,13 @@ class PromptViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+    val allPromptsUnfiltered: StateFlow<List<PromptWithTags>> = repository.allPrompts
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
+
     private val _editingPrompt = MutableStateFlow<PromptWithTags?>(null)
     val editingPrompt: StateFlow<PromptWithTags?> = _editingPrompt.asStateFlow()
 
