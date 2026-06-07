@@ -34,37 +34,6 @@ PromptBase is a prompt manager for Android. Designed for power users and AI enth
 
 ---
 
-## Project Structure
-
-```
-app/src/main/java/com/promptbase/app/
-├── MainActivity.kt              # Entry point + NavHost container
-├── PromptBaseApplication.kt     # @HiltAndroidApp
-├── data/
-│   ├── db/
-│   │   ├── AppDatabase.kt       # Room DB v2 with MIGRATION_1_2
-│   │   ├── DatabaseModule.kt    # Hilt module (DB + DAO + seed)
-│   │   └── PromptDao.kt         # DAOs with SQL-backed filtering
-│   ├── model/
-│   │   └── Prompt.kt            # Entities: Prompt, Tag, PromptTagCrossRef
-│   └── repository/
-│       └── PromptRepository.kt  # @Singleton repository
-├── ui/
-│   ├── PromptViewModel.kt       # @HiltViewModel with StateFlow
-│   ├── HomeScreen.kt            # Prompt list + search + filters
-│   ├── EditorScreen.kt          # Create/edit prompt with tags
-│   ├── PromptCard.kt            # Individual prompt card composable
-│   ├── MagicFillSheet.kt        # Bottom-sheet variable filler
-│   ├── MarkdownRenderer.kt      # Markdown parser + renderer
-│   ├── ProfileScreen.kt         # Export/import/trash screen
-│   ├── TrashScreen.kt           # Trash management screen
-│   └── theme/                   # Material 3 theme (Color, Theme, Type)
-└── util/
-    ├── VariableParser.kt        # Regex variable extraction/replacement
-    └── ExportImport.kt          # Moshi-based JSON export/import
-```
-
----
 
 ## Getting Started
 

@@ -3,6 +3,7 @@
 .gradle
 /local.properties
 /android-sdk
+/jdk-21.0.11+10
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
@@ -36,3 +37,4 @@ Thumbs.db
 promptbase.zip
 .agents/
 skills-lock.json
+/_misc
