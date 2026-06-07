@@ -6,22 +6,26 @@ PromptBase is a prompt manager for Android. Designed for power users and AI enth
 
 ## Features
 
-- **Dynamic Templating**: Use `{{ variable }}` or `{{ variable : default }}` syntax to create reusable prompt templates.
-- **Markdown Rendering**: High-performance rendering for structured prompts (Headers, Lists, Code Blocks) using the Inter typeface.
-- **Smart Organization**: Many-to-many tag system to categorize your library precisely.
-- **Instant Search**: Real-time indexed search across titles and prompt content.
+- **Dynamic Templating**: Use `{{ variable }}` or `{{ variable : default }}` syntax to create reusable prompt templates with live preview.
+- **Markdown Rendering**: Custom parser supporting Headers, Code Blocks, Lists, and Paragraphs with variable highlighting.
+- **Smart Organization**: Many-to-many tag system with category filter chips (All, by tag, Others for untagged).
+- **Instant Search**: Real-time filtering across title and content.
+- **Trash System**: Soft-delete with 30-day auto-expiry, restore, and empty trash.
+- **Backup & Restore**: JSON export/import via system file picker with format validation and duplicate skipping.
+- **The Magic Sheet**: Dedicated bottom-sheet UI for filling variables and previewing the final prompt before copying.
+- **Premium Theme**: Material 3 with custom indigo-purple palette, full typography scale, light/dark mode.
 - **Private and Offline**: 100% local storage using Room (SQLite). Your data never leaves your device.
-- **The Magic Sheet**: A dedicated UI for filling variables and previewing the final prompt before copying.
 
 ---
 
 ## Technical Stack
 
-- **Language**: Kotlin 2.1.0
+- **Language**: Kotlin 2.2.10
 - **UI Framework**: Jetpack Compose (Material 3)
-- **Database**: Room Persistence Library (Offline-first architecture)
+- **Database**: Room Persistence Library v2.7.0 (Offline-first architecture)
 - **Asynchrony**: Kotlin Coroutines and Flow
-- **Architecture**: MVVM and Clean Architecture
+- **Serialization**: Moshi for JSON export/import
+- **Architecture**: MVVM with Repository pattern
 - **CI/CD**: GitHub Actions (Automated APK/AAB builds and releases)
 
 ---
@@ -30,7 +34,7 @@ PromptBase is a prompt manager for Android. Designed for power users and AI enth
 
 ### Prerequisites
 - Android Studio Ladybug or newer.
-- Android SDK 36 (target).
+- Android SDK 36 (target), min SDK 24.
 - JDK 17.
 
 ### Local Setup
@@ -66,7 +70,7 @@ git push origin v1.0.0
 
 ## Architecture
 
-PromptBase follows Clean Architecture principles to ensure the codebase remains maintainable and "sync-ready" for future cloud features:
-- **Data Layer**: Room Entities, DAOs, and the Repository pattern.
-- **Domain Layer**: Business logic for variable parsing and text resolution.
-- **Presentation Layer**: State-driven UI using ViewModels and Jetpack Compose.
+PromptBase follows MVVM with Repository pattern:
+- **Data Layer**: Room Entities (Prompt, Tag, PromptTagCrossRef), DAOs, and PromptRepository.
+- **Domain Logic**: VariableParser for template variable extraction and replacement.
+- **Presentation Layer**: State-driven UI using ViewModels (StateFlow) and Jetpack Compose.
