@@ -8,6 +8,7 @@ import com.example.data.model.Prompt
 import com.example.data.model.PromptWithTags
 import com.example.data.model.Tag
 import com.example.data.repository.PromptRepository
+import com.example.util.ExportedPrompt
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -16,11 +17,10 @@ class PromptViewModel(application: Application) : AndroidViewModel(application) 
     private val db = AppDatabase.getDatabase(application, viewModelScope)
     private val repository = PromptRepository(db.promptDao())
 
-    // Search and filter parameters
     val searchQuery = MutableStateFlow("")
     val selectedTag = MutableStateFlow<Tag?>(null)
+    val showOnlyUntagged = MutableStateFlow(false)
 
-    // Tag list observed from Database
     val allTags: StateFlow<List<Tag>> = repository.allTags
         .stateIn(
             scope = viewModelScope,
@@ -28,14 +28,16 @@ class PromptViewModel(application: Application) : AndroidViewModel(application) 
             initialValue = emptyList()
         )
 
-    // Reactively filtered Prompt list with single source of truth
     val prompts: StateFlow<List<PromptWithTags>> = combine(
         repository.allPrompts,
         searchQuery,
-        selectedTag
-    ) { list, query, tag ->
+        selectedTag,
+        showOnlyUntagged
+    ) { list, query, tag, onlyUntagged ->
         var filtered = list
-        if (tag != null) {
+        if (onlyUntagged) {
+            filtered = filtered.filter { it.tags.isEmpty() }
+        } else if (tag != null) {
             filtered = filtered.filter { item ->
                 item.tags.any { t -> t.tagId == tag.tagId }
             }
@@ -53,14 +55,25 @@ class PromptViewModel(application: Application) : AndroidViewModel(application) 
         initialValue = emptyList()
     )
 
-    // UI state for editing or viewing a detailed Prompt
+    val trashedPrompts: StateFlow<List<PromptWithTags>> = repository.trashedPrompts
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     private val _editingPrompt = MutableStateFlow<PromptWithTags?>(null)
     val editingPrompt: StateFlow<PromptWithTags?> = _editingPrompt.asStateFlow()
 
-    // Temporary form states for adding/editing a prompt
     val editTitle = MutableStateFlow("")
     val editContent = MutableStateFlow("")
-    val editTags = MutableStateFlow<List<String>>(emptyList()) // List of Tag names
+    val editTags = MutableStateFlow<List<String>>(emptyList())
+
+    init {
+        viewModelScope.launch {
+            repository.deleteExpiredPrompts()
+        }
+    }
 
     fun setSearchQuery(query: String) {
         searchQuery.value = query
@@ -68,6 +81,12 @@ class PromptViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectTag(tag: Tag?) {
         selectedTag.value = tag
+        showOnlyUntagged.value = false
+    }
+
+    fun selectUntagged() {
+        showOnlyUntagged.value = true
+        selectedTag.value = null
     }
 
     fun startEditing(promptWithTags: PromptWithTags) {
@@ -118,15 +137,33 @@ class PromptViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun archivePrompt(id: String) {
+    fun softDeletePrompt(id: String) {
         viewModelScope.launch {
-            repository.archivePrompt(id)
+            repository.softDeletePrompt(id)
         }
     }
 
-    fun deletePrompt(id: String) {
+    fun restorePrompt(id: String) {
         viewModelScope.launch {
-            repository.deletePrompt(id)
+            repository.restorePrompt(id)
+        }
+    }
+
+    fun permanentlyDeletePrompt(id: String) {
+        viewModelScope.launch {
+            repository.permanentlyDeletePrompt(id)
+        }
+    }
+
+    fun emptyTrash() {
+        viewModelScope.launch {
+            repository.emptyTrash()
+        }
+    }
+
+    fun importPrompts(imported: List<ExportedPrompt>) {
+        viewModelScope.launch {
+            repository.importPrompts(imported)
         }
     }
 

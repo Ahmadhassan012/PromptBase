@@ -8,46 +8,62 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = SleekPrimaryContainer,
-    onPrimary = SleekOnPrimaryContainer,
-    primaryContainer = SleekPrimary,
-    onPrimaryContainer = SleekOnPrimary,
-    secondary = SleekSecondaryContainer,
-    onSecondary = SleekOnSecondaryContainer,
-    background = Color(0xFF141218),
-    onBackground = Color(0xFFE6E1E5),
-    surface = Color(0xFF141218),
-    onSurface = Color(0xFFE6E1E5),
-    surfaceVariant = Color(0xFF49454F),
-    onSurfaceVariant = Color(0xFFCAC4D0),
-    outline = Color(0xFF938F99)
+    primary = PrimaryDark,
+    onPrimary = OnPrimaryDark,
+    primaryContainer = PrimaryContainerDark,
+    onPrimaryContainer = OnPrimaryContainerDark,
+    secondary = SecondaryDark,
+    onSecondary = OnSecondaryDark,
+    secondaryContainer = SecondaryContainerDark,
+    onSecondaryContainer = OnSecondaryContainerDark,
+    tertiary = TertiaryDark,
+    onTertiary = OnTertiaryDark,
+    tertiaryContainer = TertiaryContainerDark,
+    onTertiaryContainer = OnTertiaryContainerDark,
+    error = ErrorDark,
+    onError = OnErrorDark,
+    background = DarkBackground,
+    onBackground = DarkOnBackground,
+    surface = DarkSurface,
+    onSurface = DarkOnSurface,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkOnSurfaceVariant,
+    outline = DarkOutline,
+    outlineVariant = DarkOutline.copy(alpha = 0.5f),
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = SleekPrimary,
-    onPrimary = SleekOnPrimary,
-    primaryContainer = SleekPrimaryContainer,
-    onPrimaryContainer = SleekOnPrimaryContainer,
-    secondary = SleekSecondary,
-    secondaryContainer = SleekSecondaryContainer,
-    onSecondaryContainer = SleekOnSecondaryContainer,
-    background = SleekBackground,
-    onBackground = SleekOnBackground,
-    surface = SleekSurface,
-    onSurface = SleekOnSurface,
-    surfaceVariant = SleekSurfaceVariant,
-    onSurfaceVariant = SleekOnSurfaceVariant,
-    outline = SleekOutline
+    primary = PrimaryLight,
+    onPrimary = OnPrimaryLight,
+    primaryContainer = PrimaryContainerLight,
+    onPrimaryContainer = OnPrimaryContainerLight,
+    secondary = SecondaryLight,
+    onSecondary = OnSecondaryLight,
+    secondaryContainer = SecondaryContainerLight,
+    onSecondaryContainer = OnSecondaryContainerLight,
+    tertiary = TertiaryLight,
+    onTertiary = OnTertiaryLight,
+    tertiaryContainer = TertiaryContainerLight,
+    onTertiaryContainer = OnTertiaryContainerLight,
+    error = ErrorLight,
+    onError = OnErrorLight,
+    background = LightBackground,
+    onBackground = LightOnBackground,
+    surface = LightSurface,
+    onSurface = LightOnSurface,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightOnSurfaceVariant,
+    outline = LightOutline,
+    outlineVariant = LightOutline.copy(alpha = 0.5f),
 )
 
 @Composable
 fun MyApplicationTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Set to false to prioritize our exact design theme
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {

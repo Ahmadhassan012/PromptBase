@@ -13,7 +13,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -26,7 +25,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,6 +52,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.PromptWithTags
 import com.example.data.model.Tag
 import com.example.ui.PromptViewModel
+import com.example.ui.ProfileScreen
+import com.example.ui.TrashScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.util.VariableParser
 import kotlinx.coroutines.launch
@@ -72,10 +72,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Simple App Screen state
 sealed interface ScreenState {
-    object Home : ScreenState
-    object Editor : ScreenState
+    data object Home : ScreenState
+    data object Editor : ScreenState
+    data object Profile : ScreenState
+    data object Trash : ScreenState
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,19 +84,19 @@ sealed interface ScreenState {
 fun PromptBaseApp(viewModel: PromptViewModel) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    
+
     var currentScreen by remember { mutableStateOf<ScreenState>(ScreenState.Home) }
-    
+
     val prompts by viewModel.prompts.collectAsStateWithLifecycle()
     val tags by viewModel.allTags.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedTag by viewModel.selectedTag.collectAsStateWithLifecycle()
-    
-    // Bottom sheet for variables parsing ("The Magic Sheet")
+    val showOnlyUntagged by viewModel.showOnlyUntagged.collectAsStateWithLifecycle()
+    val trashedPrompts by viewModel.trashedPrompts.collectAsStateWithLifecycle()
+
     var fillPromptTarget by remember { mutableStateOf<PromptWithTags?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    
-    // Custom beautiful animated toast/banner overlay when copied
+
     var copyAlertMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -124,41 +125,52 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
                     Brush.verticalGradient(
                         colors = listOf(
                             MaterialTheme.colorScheme.background,
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                         )
                     )
                 )
         ) {
-            // Main views
             AnimatedContent(
                 targetState = currentScreen,
                 transitionSpec = {
-                    slideInHorizontally(initialOffsetX = { if (targetState == ScreenState.Editor) it else -it }, animationSpec = spring()) togetherWith
-                    slideOutHorizontally(targetOffsetX = { if (targetState == ScreenState.Editor) -it else it }, animationSpec = spring())
+                    val direction = when {
+                        targetState is ScreenState.Editor && initialState is ScreenState.Home -> 1
+                        targetState is ScreenState.Profile && initialState is ScreenState.Home -> 1
+                        targetState is ScreenState.Trash && initialState is ScreenState.Profile -> 1
+                        targetState is ScreenState.Home -> -1
+                        else -> -1
+                    }
+                    slideInHorizontally(initialOffsetX = { if (direction > 0) it else -it }, animationSpec = spring()) togetherWith
+                    slideOutHorizontally(targetOffsetX = { if (direction > 0) -it else it }, animationSpec = spring())
                 },
                 label = "ScreenTransition"
             ) { screen ->
                 when (screen) {
-                    ScreenState.Home -> {
+                    is ScreenState.Home -> {
                         HomeScreen(
                             prompts = prompts,
                             tags = tags,
                             searchQuery = searchQuery,
                             selectedTag = selectedTag,
+                            showOnlyUntagged = showOnlyUntagged,
                             onQueryChange = { viewModel.setSearchQuery(it) },
-                            onSelectTag = { viewModel.selectTag(it) },
+                            onSelectTag = { tag ->
+                                viewModel.selectTag(tag)
+                            },
+                            onSelectUntagged = { viewModel.selectUntagged() },
+                            onProfileClick = { currentScreen = ScreenState.Profile },
                             onFillClick = { prompt -> fillPromptTarget = prompt },
                             onEditClick = { prompt ->
                                 viewModel.startEditing(prompt)
                                 currentScreen = ScreenState.Editor
                             },
                             onArchiveClick = { prompt ->
-                                viewModel.archivePrompt(prompt.prompt.id)
-                                Toast.makeText(context, "Prompt archived", Toast.LENGTH_SHORT).show()
+                                viewModel.softDeletePrompt(prompt.prompt.id)
+                                Toast.makeText(context, "Moved to trash", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
-                    ScreenState.Editor -> {
+                    is ScreenState.Editor -> {
                         val editTitle by viewModel.editTitle.collectAsStateWithLifecycle()
                         val editContent by viewModel.editContent.collectAsStateWithLifecycle()
                         val editTags by viewModel.editTags.collectAsStateWithLifecycle()
@@ -182,10 +194,29 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
                             }
                         )
                     }
+                    is ScreenState.Profile -> {
+                        ProfileScreen(
+                            prompts = prompts,
+                            trashedCount = trashedPrompts.size,
+                            onImportPrompts = { imported ->
+                                viewModel.importPrompts(imported)
+                            },
+                            onNavigateToTrash = { currentScreen = ScreenState.Trash },
+                            onBack = { currentScreen = ScreenState.Home }
+                        )
+                    }
+                    is ScreenState.Trash -> {
+                        TrashScreen(
+                            trashedPrompts = trashedPrompts,
+                            onRestore = { viewModel.restorePrompt(it) },
+                            onPermanentDelete = { viewModel.permanentlyDeletePrompt(it) },
+                            onEmptyTrash = { viewModel.emptyTrash() },
+                            onBack = { currentScreen = ScreenState.Profile }
+                        )
+                    }
                 }
             }
 
-            // Copy Success Toast/Overlay Alert
             AnimatedVisibility(
                 visible = copyAlertMessage != null,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
@@ -221,7 +252,6 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
                     }
                 }
 
-                // Autohide copied notifier
                 LaunchedEffect(copyAlertMessage) {
                     if (copyAlertMessage != null) {
                         kotlinx.coroutines.delay(2000)
@@ -230,7 +260,6 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
                 }
             }
 
-            // Bottom popup "Magic Variable Replacement Sheet"
             if (fillPromptTarget != null) {
                 ModalBottomSheet(
                     onDismissRequest = { fillPromptTarget = null },
@@ -260,8 +289,11 @@ fun HomeScreen(
     tags: List<Tag>,
     searchQuery: String,
     selectedTag: Tag?,
+    showOnlyUntagged: Boolean,
     onQueryChange: (String) -> Unit,
     onSelectTag: (Tag?) -> Unit,
+    onSelectUntagged: () -> Unit,
+    onProfileClick: () -> Unit,
     onFillClick: (PromptWithTags) -> Unit,
     onEditClick: (PromptWithTags) -> Unit,
     onArchiveClick: (PromptWithTags) -> Unit,
@@ -271,36 +303,44 @@ fun HomeScreen(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // App header
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            Text(
-                text = "PromptBase",
-                style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 32.sp,
-                    lineHeight = 38.sp,
-                    letterSpacing = (-1).sp
-                ),
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "Your prompt library",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "PromptBase",
+                        style = MaterialTheme.typography.displayMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Your prompt library",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onProfileClick) {
+                    Icon(
+                        Icons.Rounded.AccountCircle,
+                        contentDescription = "Profile",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Search bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onQueryChange,
-                placeholder = { Text("Search templates & contents...") },
+                placeholder = { Text("Search") },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = "Search Icon") },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
@@ -315,7 +355,7 @@ fun HomeScreen(
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedContainerColor = MaterialTheme.colorScheme.surface
                 ),
                 singleLine = true,
@@ -324,7 +364,6 @@ fun HomeScreen(
             )
         }
 
-        // Horizontal tags list row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -333,12 +372,11 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // "All" tag chip
             FilterChip(
-                selected = selectedTag == null,
+                selected = selectedTag == null && !showOnlyUntagged,
                 onClick = { onSelectTag(null) },
-                label = { Text("All Prompts") },
-                leadingIcon = if (selectedTag == null) {
+                label = { Text("All") },
+                leadingIcon = if (selectedTag == null && !showOnlyUntagged) {
                     { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                 } else null,
                 shape = RoundedCornerShape(12.dp)
@@ -358,11 +396,22 @@ fun HomeScreen(
                     shape = RoundedCornerShape(12.dp)
                 )
             }
+
+            FilterChip(
+                selected = showOnlyUntagged,
+                onClick = { onSelectUntagged() },
+                label = { Text("Others") },
+                leadingIcon = if (showOnlyUntagged) {
+                    { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                } else {
+                    { Icon(Icons.Rounded.HelpOutline, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                },
+                shape = RoundedCornerShape(12.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Prompts vertical lazy list
         if (prompts.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -451,8 +500,7 @@ fun PromptCard(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -462,7 +510,6 @@ fun PromptCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Title
                 Text(
                     text = prompt.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -473,7 +520,6 @@ fun PromptCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Quick copy fill button
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -505,7 +551,6 @@ fun PromptCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Body preview up to 3 lines
             Text(
                 text = prompt.content,
                 style = MaterialTheme.typography.bodyMedium,
@@ -516,13 +561,11 @@ fun PromptCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Bottom Info: Tags and variables summary
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Tags
                 Row(
                     modifier = Modifier
                         .weight(1f)
@@ -551,7 +594,6 @@ fun PromptCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Variables info pill
                 Box(
                     modifier = Modifier
                         .background(
@@ -607,7 +649,6 @@ fun EditorScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Edit screen top actions
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -632,7 +673,6 @@ fun EditorScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Title textfield
         OutlinedTextField(
             value = title,
             onValueChange = onTitleChange,
@@ -651,7 +691,6 @@ fun EditorScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Content / Template Editor with variable highlight info
         OutlinedTextField(
             value = content,
             onValueChange = onContentChange,
@@ -669,7 +708,6 @@ fun EditorScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Prompt helper card explaining dynamic variable format
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -741,7 +779,6 @@ fun EditorScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Tags manager sub-layout
         Text(
             text = "Categories / Tags:",
             style = MaterialTheme.typography.titleSmall,
@@ -749,7 +786,6 @@ fun EditorScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Added Tags Flow / FlowRow alternative in standard Compose
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -776,7 +812,6 @@ fun EditorScreen(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Outlined tag input field
         OutlinedTextField(
             value = tagInput,
             onValueChange = { tagInput = it },
@@ -822,17 +857,15 @@ fun MagicFillSheetContent(
 ) {
     val prompt = promptWithTags.prompt
     val variables = remember(prompt.content) { VariableParser.extractVariables(prompt.content) }
-    
-    // Key values mapping inputs
-    val inputValues = remember { 
+
+    val inputValues = remember {
         mutableStateMapOf<String, String>().apply {
             variables.forEach { v ->
                 put(v.key, v.defaultValue ?: "")
             }
         }
     }
-    
-    // Live preview resolution value calculation
+
     val resolvedPrompt = remember(prompt.content, inputValues) {
         derivedStateOf {
             VariableParser.replaceVariables(prompt.content, inputValues)
@@ -848,7 +881,6 @@ fun MagicFillSheetContent(
             .padding(horizontal = 20.dp, vertical = 8.dp)
             .padding(bottom = 36.dp)
     ) {
-        // Sheet Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -874,7 +906,6 @@ fun MagicFillSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Dynamic Textfields based on extracted variable entries
         if (variables.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -917,7 +948,6 @@ fun MagicFillSheetContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Live Preview text area Render
         Text(
             text = "Live Resulting Preview:",
             style = MaterialTheme.typography.titleSmall,
@@ -945,7 +975,6 @@ fun MagicFillSheetContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Final primary action Copy button
         Button(
             onClick = {
                 val finalContent = resolvedPrompt.value
@@ -977,7 +1006,6 @@ fun MagicFillSheetContent(
     }
 }
 
-// Seamless dynamic custom markdown renderer that parses on-device with zero compilation hazards
 sealed class MarkdownBlock {
     data class Header(val text: String, val level: Int) : MarkdownBlock()
     data class CodeBlock(val text: String, val language: String?) : MarkdownBlock()

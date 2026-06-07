@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.model.Prompt
 import com.example.data.model.PromptTagCrossRef
@@ -14,7 +15,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Prompt::class, Tag::class, PromptTagCrossRef::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,6 +26,16 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS prompts_new (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER DEFAULT NULL, `syncStatus` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`))")
+                db.execSQL("INSERT INTO prompts_new (id, title, content, createdAt, updatedAt, deletedAt, syncStatus) SELECT id, title, content, createdAt, updatedAt, CASE WHEN isArchived = 1 THEN updatedAt ELSE NULL END, syncStatus FROM prompts")
+                db.execSQL("DROP TABLE prompts")
+                db.execSQL("ALTER TABLE prompts_new RENAME TO prompts")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_prompts_title ON prompts(title)")
+            }
+        }
+
         fun getDatabase(context: Context, scope: CoroutineScope): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -32,6 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "promptbase_database"
                 )
+                .addMigrations(MIGRATION_1_2)
                 .addCallback(DatabaseCallback(scope))
                 .build()
                 INSTANCE = instance
@@ -53,7 +65,6 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         suspend fun populateInitialData(dao: PromptDao) {
-            // Starter tags representing standard workflows
             val tags = listOf(
                 Tag(tagId = "1", name = "Writing"),
                 Tag(tagId = "2", name = "Coding"),
@@ -63,7 +74,6 @@ abstract class AppDatabase : RoomDatabase() {
             )
             tags.forEach { dao.insertTag(it) }
 
-            // Starter prompts to demonstrate dynamic variables of the template
             val starterPrompt1 = Prompt(
                 id = "p1",
                 title = "Email Copilot",
@@ -83,10 +93,9 @@ abstract class AppDatabase : RoomDatabase() {
             dao.insertPrompt(starterPrompt1)
             dao.insertPrompt(starterPrompt2)
 
-            // Link prompts to initial tags
-            dao.insertPromptTagCrossRef(PromptTagCrossRef("p1", "1")) // Writing
-            dao.insertPromptTagCrossRef(PromptTagCrossRef("p1", "4")) // Productivity
-            dao.insertPromptTagCrossRef(PromptTagCrossRef("p2", "2")) // Coding
+            dao.insertPromptTagCrossRef(PromptTagCrossRef("p1", "1"))
+            dao.insertPromptTagCrossRef(PromptTagCrossRef("p1", "4"))
+            dao.insertPromptTagCrossRef(PromptTagCrossRef("p2", "2"))
         }
     }
 }

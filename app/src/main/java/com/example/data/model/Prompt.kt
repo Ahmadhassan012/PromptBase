@@ -18,7 +18,7 @@ data class Prompt(
     val content: String,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val isArchived: Boolean = false,
+    val deletedAt: Long? = null,
     val syncStatus: Int = 0
 )
 

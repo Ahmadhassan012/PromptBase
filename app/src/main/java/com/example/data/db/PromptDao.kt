@@ -11,14 +11,14 @@ import kotlinx.coroutines.flow.Flow
 interface PromptDao {
 
     @Transaction
-    @Query("SELECT * FROM prompts WHERE isArchived = 0 ORDER BY updatedAt DESC")
+    @Query("SELECT * FROM prompts WHERE deletedAt IS NULL ORDER BY updatedAt DESC")
     fun getAllPromptsWithTags(): Flow<List<PromptWithTags>>
 
     @Transaction
     @Query("""
         SELECT * FROM prompts 
         WHERE (title LIKE '%' || :query || '%' OR content LIKE '%' || :query || '%') 
-        AND isArchived = 0
+        AND deletedAt IS NULL
         ORDER BY updatedAt DESC
     """)
     fun searchPromptsWithTags(query: String): Flow<List<PromptWithTags>>
@@ -27,10 +27,18 @@ interface PromptDao {
     @Query("""
         SELECT p.* FROM prompts p
         INNER JOIN prompt_tag_cross_ref ref ON p.id = ref.promptId
-        WHERE ref.tagId = :tagId AND p.isArchived = 0
+        WHERE ref.tagId = :tagId AND p.deletedAt IS NULL
         ORDER BY p.updatedAt DESC
     """)
     fun getPromptsByTag(tagId: String): Flow<List<PromptWithTags>>
+
+    @Transaction
+    @Query("SELECT * FROM prompts WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
+    fun getTrashedPromptsWithTags(): Flow<List<PromptWithTags>>
+
+    @Transaction
+    @Query("SELECT * FROM prompts WHERE deletedAt IS NULL")
+    suspend fun getAllPromptsOnce(): List<PromptWithTags>
 
     @Query("SELECT * FROM prompts WHERE id = :id LIMIT 1")
     suspend fun getPromptById(id: String): Prompt?
@@ -47,11 +55,20 @@ interface PromptDao {
     @Update
     suspend fun updatePrompt(prompt: Prompt)
 
-    @Query("UPDATE prompts SET isArchived = 1, updatedAt = :timestamp WHERE id = :id")
-    suspend fun archivePrompt(id: String, timestamp: Long)
+    @Query("UPDATE prompts SET deletedAt = :timestamp, updatedAt = :timestamp WHERE id = :id")
+    suspend fun softDeletePrompt(id: String, timestamp: Long)
+
+    @Query("UPDATE prompts SET deletedAt = NULL, updatedAt = :timestamp WHERE id = :id")
+    suspend fun restorePrompt(id: String, timestamp: Long)
 
     @Query("DELETE FROM prompts WHERE id = :id")
     suspend fun deletePrompt(id: String)
+
+    @Query("DELETE FROM prompts WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
+    suspend fun deleteExpiredPrompts(cutoff: Long)
+
+    @Query("DELETE FROM prompts WHERE deletedAt IS NOT NULL")
+    suspend fun emptyTrash()
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertTag(tag: Tag): Long
