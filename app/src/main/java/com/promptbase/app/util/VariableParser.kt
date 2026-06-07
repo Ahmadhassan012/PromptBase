@@ -22,6 +22,7 @@ object VariableParser {
         for (match in matches) {
             val originalName = match.groupValues[1]
             val key = originalName.trim().lowercase()
+            if (key.isBlank()) continue
             val defaultValue = match.groupValues.getOrNull(2)?.trim()?.takeIf { it.isNotEmpty() }
 
             if (!uniqueVars.containsKey(key)) {
