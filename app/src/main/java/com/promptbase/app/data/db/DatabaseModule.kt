@@ -2,6 +2,7 @@ package com.promptbase.app.data.db
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.promptbase.app.data.model.Prompt
 import com.promptbase.app.data.model.PromptTagCrossRef
