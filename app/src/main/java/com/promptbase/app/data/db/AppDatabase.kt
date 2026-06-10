@@ -81,5 +81,6 @@ internal val MIGRATION_2_3 = object : Migration(2, 3) {
         }
     }
 
-    private data class SeedPrompt(val id: String, val title: String, val content: String, val categoryTagId: String)
 }
+
+private data class SeedPrompt(val id: String, val title: String, val content: String, val categoryTagId: String)
