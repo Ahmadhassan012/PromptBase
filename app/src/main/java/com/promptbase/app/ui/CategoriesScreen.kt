@@ -29,7 +29,7 @@ import com.promptbase.app.data.model.Tag
 fun CategoriesScreen(
     tags: List<Tag>,
     onCategoryClick: (Tag) -> Unit,
-    onCreateCategory: (String) -> Unit,
+    onCreateCategory: (name: String, colorHex: String) -> Unit,
     onDeleteCategory: ((Tag) -> Unit)? = null,
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -77,8 +77,8 @@ fun CategoriesScreen(
     if (showCreateDialog) {
         CreateCategoryDialog(
             onDismiss = { showCreateDialog = false },
-            onConfirm = { name ->
-                onCreateCategory(name)
+            onConfirm = { name, colorHex ->
+                onCreateCategory(name, colorHex)
                 showCreateDialog = false
             }
         )
@@ -220,12 +220,19 @@ private fun CreateCategoryCard(onClick: () -> Unit) {
     }
 }
 
+private val categoryColors = listOf(
+    "#E91E63", "#F44336", "#FF5722", "#FF9800",
+    "#FFC107", "#4CAF50", "#009688", "#2196F3",
+    "#3F51B5", "#6750A4", "#9C27B0", "#607D8B",
+)
+
 @Composable
 private fun CreateCategoryDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
+    onConfirm: (name: String, colorHex: String) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
+    var selectedColor by remember { mutableStateOf(categoryColors[0]) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -233,17 +240,60 @@ private fun CreateCategoryDialog(
             Text("New Category", fontWeight = FontWeight.Bold)
         },
         text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Category name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Category name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Color:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categoryColors.chunked(6).forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { colorHex ->
+                                val isSelected = selectedColor == colorHex
+                                val c = try {
+                                    Color(android.graphics.Color.parseColor(colorHex))
+                                } catch (_: Exception) {
+                                    MaterialTheme.colorScheme.primary
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(c, RoundedCornerShape(10.dp))
+                                        .clickable { selectedColor = colorHex },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isSelected) {
+                                        Icon(
+                                            Icons.Rounded.Check,
+                                            contentDescription = "Selected",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(name.trim()) },
+                onClick = { onConfirm(name.trim(), selectedColor) },
                 enabled = name.isNotBlank()
             ) {
                 Text("Create")

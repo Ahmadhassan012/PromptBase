@@ -167,9 +167,9 @@ class PromptViewModel @Inject constructor(
         }
     }
 
-    fun addTagDirectly(tagName: String) {
+    fun addTagDirectly(tagName: String, colorHex: String = "#6750A4") {
         viewModelScope.launch {
-            repository.createTag(tagName)
+            repository.createTag(tagName, colorHex)
         }
     }
 

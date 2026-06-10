@@ -204,8 +204,8 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
                         onCategoryClick = { tag ->
                             navController.navigate("category/${tag.tagId}")
                         },
-                        onCreateCategory = { name ->
-                            viewModel.addTagDirectly(name)
+                        onCreateCategory = { name, colorHex ->
+                            viewModel.addTagDirectly(name, colorHex)
                         },
                         onDeleteCategory = { tag ->
                             viewModel.deleteTag(tag.tagId)

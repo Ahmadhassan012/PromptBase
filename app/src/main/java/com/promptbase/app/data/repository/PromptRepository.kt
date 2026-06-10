@@ -119,12 +119,12 @@ class PromptRepository @Inject constructor(private val promptDao: PromptDao) {
         }
     }
 
-    suspend fun createTag(name: String): Tag? {
+    suspend fun createTag(name: String, colorHex: String = "#6750A4"): Tag? {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return null
         val existing = promptDao.getTagByName(trimmed)
         if (existing != null) return existing
-        val newTag = Tag(name = trimmed)
+        val newTag = Tag(name = trimmed, colorHex = colorHex)
         promptDao.insertTag(newTag)
         return newTag
     }
