@@ -1,7 +1,9 @@
 package com.promptbase.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,8 +30,10 @@ fun CategoriesScreen(
     tags: List<Tag>,
     onCategoryClick: (Tag) -> Unit,
     onCreateCategory: (String) -> Unit,
+    onDeleteCategory: ((Tag) -> Unit)? = null,
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<Tag?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -58,7 +62,9 @@ fun CategoriesScreen(
             items(tags, key = { it.tagId }) { tag ->
                 CategoryCard(
                     tag = tag,
-                    onClick = { onCategoryClick(tag) }
+                    onClick = { onCategoryClick(tag) },
+                    onDeleteClick = if (!tag.isPredefined && onDeleteCategory != null)
+                        { { deleteTarget = tag } } else null
                 )
             }
 
@@ -77,10 +83,39 @@ fun CategoriesScreen(
             }
         )
     }
+
+    if (deleteTarget != null) {
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete Category", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("Delete \"${deleteTarget!!.name}\"? Prompts in this category won't be deleted, only uncategorized.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteCategory?.invoke(deleteTarget!!)
+                        deleteTarget = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CategoryCard(tag: Tag, onClick: () -> Unit) {
+private fun CategoryCard(tag: Tag, onClick: () -> Unit, onDeleteClick: (() -> Unit)? = null) {
     val bgColor = try {
         Color(android.graphics.Color.parseColor(tag.colorHex))
     } catch (_: Exception) {
@@ -91,7 +126,10 @@ private fun CategoryCard(tag: Tag, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(140.dp)
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onDeleteClick
+            ),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface

@@ -128,4 +128,9 @@ class PromptRepository @Inject constructor(private val promptDao: PromptDao) {
         promptDao.insertTag(newTag)
         return newTag
     }
+
+    suspend fun deleteTag(tagId: String) {
+        promptDao.deleteCrossRefsForTag(tagId)
+        promptDao.deleteTag(tagId)
+    }
 }

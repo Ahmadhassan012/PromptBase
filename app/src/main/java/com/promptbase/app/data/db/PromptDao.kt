@@ -108,4 +108,10 @@ interface PromptDao {
 
     @Query("DELETE FROM prompt_tag_cross_ref WHERE promptId = :promptId")
     suspend fun deleteCrossRefsForPrompt(promptId: String)
+
+    @Query("DELETE FROM prompt_tag_cross_ref WHERE tagId = :tagId")
+    suspend fun deleteCrossRefsForTag(tagId: String)
+
+    @Query("DELETE FROM tags WHERE tagId = :tagId")
+    suspend fun deleteTag(tagId: String)
 }

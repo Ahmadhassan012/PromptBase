@@ -172,4 +172,10 @@ class PromptViewModel @Inject constructor(
             repository.createTag(tagName)
         }
     }
+
+    fun deleteTag(tagId: String) {
+        viewModelScope.launch {
+            repository.deleteTag(tagId)
+        }
+    }
 }

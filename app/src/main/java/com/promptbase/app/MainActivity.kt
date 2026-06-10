@@ -206,6 +206,9 @@ fun PromptBaseApp(viewModel: PromptViewModel) {
                         },
                         onCreateCategory = { name ->
                             viewModel.addTagDirectly(name)
+                        },
+                        onDeleteCategory = { tag ->
+                            viewModel.deleteTag(tag.tagId)
                         }
                     )
                 }
